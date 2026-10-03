@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Painel Saúde</title>
+    <meta name="description" content="Estabelecimentos de saúde do CNES por estado e município.">
+
+    <!-- Fonte e mapa (Leaflet + OpenStreetMap) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <link rel="stylesheet" href="css/painel.css">
+</head>
+<body>
+
+<!-- ========== CABEÇALHO ========== -->
+<header class="topbar">
+    <div class="topbar__inner">
+        <a class="brand" href="./">
+            <span class="brand__logo" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/></svg>
+            </span>
+            <span>
+                <strong>Painel Saúde</strong>
+                <small>Estabelecimentos do CNES</small>
+            </span>
+        </a>
+        <button class="btn btn--light" id="btn-perto" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+            Perto de mim
+        </button>
+    </div>
+</header>
+
+<div class="layout">
+
+    <!-- ========== FILTROS (coluna lateral) ========== -->
+    <aside class="filters" aria-label="Filtros">
+        <h2 class="filters__title">Filtros</h2>
+
+        <label class="field">
+            <span class="field__label">Estado</span>
+            <select id="f-uf"><option value="">Carregando…</option></select>
+        </label>
+
+        <label class="field">
+            <span class="field__label">Município</span>
+            <select id="f-municipio" disabled><option value="">Escolha o estado</option></select>
+        </label>
+
+        <label class="field">
+            <span class="field__label">Gestão</span>
+            <select id="f-tipo">
+                <option value="">Todas</option>
+                <option value="publico">Pública</option>
+                <option value="privado">Privada</option>
+                <option value="filantropico">Filantrópica</option>
+            </select>
+        </label>
+
+        <label class="field">
+            <span class="field__label">Tipo de unidade</span>
+            <select id="f-type-code" disabled><option value="">Escolha o município</option></select>
+        </label>
+
+        <label class="field">
+            <span class="field__label">Buscar por nome ou CNES</span>
+            <input id="f-q" type="search" placeholder="Ex.: clínica da mulher, 7874804">
+        </label>
+
+        <button class="btn btn--ghost btn--block" id="btn-limpar" type="button">Limpar filtros</button>
+    </aside>
+
+    <!-- ========== CONTEÚDO ========== -->
+    <main class="content">
+
+        <!-- Filtros ativos: tudo abaixo (indicadores, gráficos, lista, mapa) segue estes filtros -->
+        <div id="chips" class="chips" aria-live="polite"></div>
+
+        <!-- Indicadores -->
+        <section class="kpis" aria-label="Indicadores">
+            <article class="kpi kpi--total"><span class="kpi__label">Estabelecimentos</span><strong class="kpi__value" id="k-total">–</strong></article>
+            <article class="kpi kpi--publico"><span class="kpi__label">Públicos</span><strong class="kpi__value" id="k-publico">–</strong></article>
+            <article class="kpi kpi--privado"><span class="kpi__label">Privados</span><strong class="kpi__value" id="k-privado">–</strong></article>
+            <article class="kpi kpi--filantropico"><span class="kpi__label">Filantrópicos</span><strong class="kpi__value" id="k-filantropico">–</strong></article>
+        </section>
+
+        <!-- Gráficos -->
+        <section class="charts">
+            <article class="card">
+                <h3 class="card__title">Tipos mais comuns</h3>
+                <div id="chart-tipos" class="bars"><p class="muted">Escolha um estado.</p></div>
+            </article>
+            <article class="card">
+                <h3 class="card__title">Por gestão</h3>
+                <div class="donut-wrap">
+                    <div id="chart-gestao" class="donut"><span id="donut-total">–</span></div>
+                    <ul id="legend-gestao" class="legend"></ul>
+                </div>
+            </article>
+        </section>
+
+        <!-- Lista / Mapa -->
+        <section class="card results">
+            <div class="results__head">
+                <div>
+                    <h3 class="card__title" id="results-title">Estabelecimentos</h3>
+                    <p class="muted" id="results-sub">Escolha o estado e o município para ver a lista.</p>
+                </div>
+                <div class="tabs" role="tablist">
+                    <button class="tab is-active" role="tab" data-view="lista" aria-selected="true">Lista</button>
+                    <button class="tab" role="tab" data-view="mapa" aria-selected="false">Mapa</button>
+                </div>
+            </div>
+
+            <div id="alert" class="alert" hidden></div>
+
+            <div id="view-lista">
+                <div id="lista" class="grid"></div>
+                <nav id="paginacao" class="pager" aria-label="Paginação"></nav>
+            </div>
+            <div id="view-mapa" hidden>
+                <div id="mapa" class="map"></div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- ========== DETALHE (janela) ========== -->
+<dialog id="detalhe" class="modal">
+    <div class="modal__head">
+        <h3 id="detalhe-titulo">Estabelecimento</h3>
+        <button class="modal__close" type="button" aria-label="Fechar" data-close>×</button>
+    </div>
+    <div id="detalhe-corpo" class="modal__body"></div>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/painel.js"></script>
+</body>
+</html>
