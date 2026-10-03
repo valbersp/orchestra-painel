@@ -24,6 +24,7 @@ Painel web para consultar os **estabelecimentos de saúde do CNES** (Ministério
 7. [Estilos e tema](#7-estilos-e-tema)
 8. [Publicação (produção)](#8-publicação-produção)
 9. [Problemas comuns](#9-problemas-comuns)
+10. [Repositórios e versionamento (Git)](#10-repositórios-e-versionamento-git)
 
 ---
 
@@ -218,3 +219,50 @@ As cores ficam em variáveis no topo de `css/painel.css` — mude ali para troca
 | Cidade sem estabelecimentos | cidade ainda não importada do CNES | importe no back-end (`php artisan cnes:buscar … --salvar`) |
 | "Perto de mim" não funciona | página aberta por `file://` ou permissão negada | sirva por `http://` e permita a localização no navegador |
 | Mapa cinza | sem internet (o mapa vem do OpenStreetMap) | verifique a conexão |
+
+---
+
+## 10. Repositórios e versionamento (Git)
+
+O sistema é formado por **dois projetos independentes**, cada um com o seu repositório, publicados no **GitLab** e no **GitHub**:
+
+| Projeto | O que é | GitLab (principal) | GitHub (espelho) |
+|---|---|---|---|
+| `orchestra-laravel` | back-end: API + workflows + banco | https://gitlab.com/valber-code/orchestra-laravel | https://github.com/valbersp/orchestra-laravel |
+| `orchestra-painel` | front-end: painel web (HTML/CSS/JS) | https://gitlab.com/valber-code/orchestra-painel | https://github.com/valbersp/orchestra-painel |
+
+Os dois se comunicam só pela API (`/api/saude/*`). Dá para alterar e publicar um sem mexer no outro, mas, quando a API muda, confira se o painel continua funcionando.
+
+### 10.1 Baixar os projetos numa máquina nova
+```powershell
+git clone https://gitlab.com/valber-code/orchestra-laravel.git
+git clone https://gitlab.com/valber-code/orchestra-painel.git
+```
+Depois siga o "Como rodar" de cada um. No back-end é preciso criar o `.env` e rodar `composer install`, porque `.env` e `vendor/` não vão para o git.
+
+### 10.2 Um `git push`, dois destinos
+Em cada projeto, o remoto `origin` está configurado para **enviar ao GitLab e ao GitHub ao mesmo tempo**. O download (`git pull`) vem do GitLab.
+```
+origin  https://gitlab.com/valber-code/<projeto>.git (fetch)
+origin  https://gitlab.com/valber-code/<projeto>.git (push)
+origin  https://github.com/valbersp/<projeto>.git    (push)
+github  https://github.com/valbersp/<projeto>.git    (só GitHub)
+```
+Numa máquina nova (depois do `git clone`), para repetir essa configuração:
+```powershell
+git remote set-url --add --push origin https://gitlab.com/valber-code/<projeto>.git
+git remote set-url --add --push origin https://github.com/valbersp/<projeto>.git
+git config user.email "valbersilvapinto@gmail.com"
+```
+
+### 10.3 Dia a dia
+```powershell
+git status                       # o que mudou
+git add -A                       # prepara tudo para o commit
+git commit -m "O que mudou"      # salva uma "foto" com mensagem
+git push                         # envia para GitLab e GitHub
+git log --oneline                # histórico
+```
+- Os commits usam o e-mail `valbersilvapinto@gmail.com` (configurado em cada projeto com `git config user.email`).
+- O branch `main` é protegido no GitLab: não aceita reescrita de histórico (force push), a não ser que a proteção seja liberada em *Settings → Repository → Protected branches*.
+- O `.gitignore` impede que `.env`, `vendor/` e o banco SQLite sejam enviados. Nunca coloque senhas no código.
